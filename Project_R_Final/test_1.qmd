@@ -1,0 +1,229 @@
+---
+title: "Health and Well-being"
+subtitle: "Exploring Total Life Expectancy and Anemia Among Girls"
+fontcolor: "#3d3d29"
+fontfamily: "Arial"
+margin: 
+  top: "2cm"
+  bottom: "2cm"
+  left: "3cm"
+  right: "3cm"
+author: Shraddha Malkar    
+date: 04/24/2024
+format: html
+engine: knitr
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+backgroundcolor: "#e6ccff"
+---
+
+![](UNICEF-logo.png){fig-align="center" width="450" height="140"}
+
+## ***Quarto Report of Unicef Data*** {style="color: #3d3d29;"}
+
+**In 2020, the world faced myriad challenges, but one of the most enduring has been ensuring the health and well-being of its populations, especially among girls and women. Central to this concern is the issue of anemia—a condition that significantly impacts maternal health and, by extension, life expectancy. Through a series of visual analyses, we embark on a journey to understand the landscape of anemia among girls and how it intersects with life expectancy across different countries.**
+
+```{r, warning=FALSE, message=FALSE, echo= FALSE}
+
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(maps)
+library(sqldf)
+library(DT)
+library(shiny)
+library(sf)
+library(leaflet)
+
+f1 <- read_csv("unicef_indicator_1.csv")
+f2 <- read_csv("unicef_indicator_2.csv")
+f3 <- read.csv("unicef_metadata.csv")
+show_col_types = FALSE
+f1_summarised <- f1 %>%
+  group_by(time_period, country) %>%
+  summarize(avg_obs_value = mean(obs_value, na.rm = TRUE)) %>%    head(9)
+ggplot(f1_summarised, aes(x = time_period, y = avg_obs_value, fill = country)) +
+ geom_col(stat = "identity") +
+ labs(title = "Observed Value of Girls with Anemia by Time Period",
+       x = "Time Period",
+       y = "Average Obs Value",
+      fill = "Country") +
+  scale_fill_brewer()
+```
+
+## ***Visual 1: The Global Distribution of Anemia*** {style="color: #3d3d29;"}
+
+-   **The first visualization presents a bar graph illustrating the average number of girls with anemia per year in different countries.**
+-   **This graph starkly highlights the geographical disparities in anemia prevalence, serving as a powerful reminder of the unequal health burdens borne by girls and women in various parts of the world.**
+-   **Countries with higher rates of anemia among girls often correlate with regions experiencing higher levels of poverty and lesser access to quality healthcare.**
+
+```{r, warning=FALSE, message=FALSE, echo= FALSE}
+#|echo: false
+
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(maps)
+library(sqldf)
+library(DT)
+library(shiny)
+library(sf)
+library(leaflet)
+library(sf)
+library(rnaturalearth)
+library(ggplot2)
+library(rnaturalearthdata)
+library(leaflet)
+
+
+f1 <- read_csv("unicef_indicator_1.csv")
+f2 <- read_csv("unicef_indicator_2.csv")
+f3 <- read.csv("unicef_metadata.csv")
+
+f4 <- f2 %>% mutate(refernce_key = paste(alpha_3_code, time_period))
+
+f5 <- f3 %>%
+     mutate(refernce_key = paste(alpha_3_code, year)) 
+
+datafile1 <- inner_join(f4, f5, by = "refernce_key")
+
+
+# Filter data for year 2022
+file_2022 <- datafile1 %>%
+  filter(year == 2022)
+
+# Load world map
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Merge data with world map
+world_data <- left_join(world, file_2022, by = c("name" = "country.x"))
+
+# Create color palette
+palette <- colorBin(palette = "Purples", domain = world_data$obs_value)
+
+# Create leaflet map
+leaflet(world_data) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~palette(obs_value),
+    weight = 2,
+    opacity = 1,
+    color = "lightblue",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlight = highlightOptions(
+      weight = 3,
+      color = "darkgrey",
+      dashArray = "",
+      fillOpacity = 0.7
+    ),
+    popup = ~paste0("Country: ", name, "<br>" , "Life Expectancy value:", obs_value, "<br>" ,"Population :" ,Population..total),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "bold",  "font-style" = "italic", "color" = "black", padding = "2.5px 7px"),
+      textsize = "12px",
+      family = "Arieal",
+      direction = "auto"
+    )
+  ) %>%
+   addLegend(pal = palette, values = ~obs_value, opacity = 0.7, title = "Life Expectancy in different countries in 2022 w.r.t Population")
+```
+
+## ***Visual 2: Life Expectancy: A World Map of Survival*** {style="color: #3d3d29;"}
+
+#### ***(click on the country to see the details)*** {style="color: #3d3d29;"}
+
+-   **The second visualization, a world map detailing country-wise life expectancy rates in relation to population size in 2022, offers a broader perspective on global health.**
+-   **Here, we see a vivid depiction of how life expectancy varies dramatically across regions, often reflecting the underlying socio-economic and healthcare infrastructures.**
+-   **Countries with lower life expectancy rates frequently overlap with those showing higher anemia prevalence among girls.**
+-   **A larger population can indirectly impact life expectancy through factors such as healthcare resource availability, access to healthcare, socioeconomic conditions, public health programs, and the needs of an aging population.**
+
+```{r, warning=FALSE, message=FALSE, echo= FALSE}
+
+library(plotly)
+
+sample <- head(datafile1, 40)
+
+fig <- plot_ly(
+  data = sample,
+  x = ~`Population..total`,
+  y = ~`obs_value`,
+  color = ~country.x,
+  type = "scatter",
+  mode = "markers",
+  marker = list(opacity = 0.5, color = "purple"),
+  text = ~paste("Country:", country.x, "<br>", "Population:", `Population..total`, "<br>", "Life Expectancy:", `obs_value`)) %>%
+  
+  layout(
+    title = "Life expectancy vs. Total population",
+    xaxis = list(title = "Total Population (in Millions)"),
+    yaxis = list(title = "Life expectancy (years)")
+  )
+
+fig
+```
+
+## ***Visual 3: The relation of Life and Numbers*** {style="color: #3d3d29;"}
+
+#### ***(hover over the dots)***
+
+-   **The third visualization shows us the intricate relation of life expectancy and total population. Here, a scatter plot reveals a captivating interplay between the two, showcasing a tapestry of trends and exceptions.**
+
+-   **As we trace the dots across the graph, we observe a general pattern: countries with higher life expectancies tend to have lower population growth rates. This harmonious movement reflects the impact of improved healthcare, education, and family planning, empowering individuals to make informed choices about their families.**
+
+```{r, warning=FALSE, message=FALSE, echo= FALSE}
+
+library(data.table)
+
+data <- f3 %>%
+  select(year, "Life.expectancy.at.birth..total..years.", "GDP.per.capita..constant.2015.US..", "country")
+
+data <- data %>%
+  sample_n(20)
+
+#data <- head(unique(data$country), 20)
+
+# Create time series plot
+ggplot(data, aes(x = year, y = `Life.expectancy.at.birth..total..years.`, color = `GDP.per.capita..constant.2015.US..`)) +
+  geom_line(color = 'purple') +
+  geom_point(aes( x = year, y = `Life.expectancy.at.birth..total..years.`, color = `GDP.per.capita..constant.2015.US..`), shape = 21, size = 3) +
+  labs(title = "Time Series of Life Expectancy and GDP per Capita",
+       x = "Year",
+       y = "Life Expectancy (Years)",
+       color = "GDP per Capita") 
+```
+
+## ***Visual 4: A Journey Through Time: Life Expectancy and GDP Per Capita*** {style="color: #3d3d29;"}
+
+-   **The above time series unfolds before us, a captivating narrative charting the intricate relationship between life expectancy and GDP per capita. As we journey through the years, we observe a complex interplay between these two forces, revealing patterns, trends, and exceptions.**
+
+-   **In the early years, the path is often one of slow and steady progress. Life expectancy gradually rises alongside modest economic growth, reflecting the gradual improvements in healthcare, sanitation, and living standards.**
+
+-   **As the decades progress, the trajectory often accelerates, with both metrics soaring in a harmonious ascent. This period showcases the transformative power of economic development, where rising prosperity fuels advancements in healthcare, education, and living standards, leading to a healthier and longer life for many.**
+
+```{r, warning=FALSE, message=FALSE, echo= FALSE}
+
+#head20 <- head(f2,20)
+
+sample20 <- f2 %>%
+  sample_n(10)
+
+
+sample20 %>%
+  ggplot(aes(x = reorder(country, obs_value), y = obs_value , fill = country)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Life Expectancy rate w.r.t Country", x = "Country", y = "Life Expectancy rate") +
+  scale_fill_manual(values = c("#8080ff", "#b3b3ff", "#4d88ff", "#80aaff", "#bb99ff", "#aa80ff", "#bf80ff", "#cc99ff", "#99bbff", "#80bfff",  "#99ccff", "#9999ff", "#9966ff", "#ccb3ff", "#b3c6ff", "#99ddff", "#b3e6ff", "#ffccff", "#ff99ff", "#ffb3ff"))
+
+```
+
+## ***Visual 5: A Glimpse of Life: Life Expectancy Across Countries*** {style="color: #3d3d29;"}
+
+-   **The bar graph above offers a glimpse into the diverse lifespans of different countries. Each bar, representing a nation, tells a story of progress, challenges, and the complex factors that shape human health.**
+-   **Countries with taller bars boast higher life expectancies, reflecting their commitment to healthcare, education, and social well-being. These nations have created an environment where individuals can live longer, healthier lives.**
+-   **However, the graph reveals a nuanced picture. Some countries with high life expectancies face challenges such as an aging population, while others grapple with issues like obesity and chronic diseases. These nations must adapt their strategies to address these emerging concerns.**
